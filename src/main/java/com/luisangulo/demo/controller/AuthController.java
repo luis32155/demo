@@ -52,28 +52,16 @@ public class AuthController {
 
     @PostMapping("/nuevo")
     public ResponseEntity<?> nuevo(@Valid @RequestBody NuevoUsuario nuevoUsuario, BindingResult bindingResult){
-        if(bindingResult.hasErrors())
-            return new ResponseEntity(new Mensaje("campos vacíos o email inválido"), HttpStatus.BAD_REQUEST);
-        if(usuarioService.existePorNombre(nuevoUsuario.getNombreUsuario()))
-            return new ResponseEntity(new Mensaje("ese nombre ya existe"), HttpStatus.BAD_REQUEST);
-        if(usuarioService.existePorEmail(nuevoUsuario.getEmail()))
-            return new ResponseEntity(new Mensaje("ese email ya existe"), HttpStatus.BAD_REQUEST);
-        Usuario usuario =
-                new Usuario(nuevoUsuario.getNombre(),nuevoUsuario.getApellido(),nuevoUsuario.getDni(),nuevoUsuario.getFoto(),nuevoUsuario.getNombreUsuario(), nuevoUsuario.getEmail(),
-                        passwordEncoder.encode(nuevoUsuario.getPassword()));
-        Set<String> rolesStr = nuevoUsuario.getRoles();
-        Set<Rol> roles = new HashSet<>();
-        for (String rol : rolesStr) {
-            switch (rol) {
-                case "admin":
-                    Rol rolAdmin = rolService.getByRolNombre(RolNombre.ROLE_ADMIN).get();
-                    roles.add(rolAdmin);
-                    break;
-                default:
-                    Rol rolUser = rolService.getByRolNombre(RolNombre.ROLE_USER).get();
-                    roles.add(rolUser);
-            }
+        if (bindingResult.hasErrors())
+            return new ResponseEntity<>(new Mensaje("campos vacíos o email inválido"), HttpStatus.BAD_REQUEST);
+
+        ResponseEntity<Mensaje> existingUserResponse = usuarioService.checkExistingUser(nuevoUsuario);
+        if (existingUserResponse != null) {
+            return existingUserResponse;
         }
+
+        Usuario usuario = usuarioService.createNewUsuario(nuevoUsuario);
+        Set<Rol> roles = usuarioService.mapRoles(nuevoUsuario.getRoles());
         usuario.setRoles(roles);
         usuarioService.guardar(usuario);
         return new ResponseEntity(new Mensaje("usuario guardado"), HttpStatus.CREATED);

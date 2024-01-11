@@ -3,7 +3,7 @@ package com.luisangulo.demo.security;
 
 import com.luisangulo.demo.security.jwt.JwtEntryPoint;
 import com.luisangulo.demo.security.jwt.JwtTokenFilter;
-import com.luisangulo.demo.service.UserDetailsServiceImpl;
+import com.luisangulo.demo.service.impl.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

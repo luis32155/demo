@@ -1,6 +1,6 @@
 package com.luisangulo.demo.security.jwt;
 
-import com.luisangulo.demo.service.UserDetailsServiceImpl;
+import com.luisangulo.demo.service.impl.UserDetailsServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +14,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
+import java.util.Optional;
 
 
 public class JwtTokenFilter extends OncePerRequestFilter{
@@ -27,26 +27,23 @@ public class JwtTokenFilter extends OncePerRequestFilter{
     @Autowired
     UserDetailsServiceImpl userDetailsServiceImpl;
 
+
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain) throws ServletException, IOException {
-        try {
-            String token = getToken(req);
-            if(token !=null && jwtProvider.validateToken(token)){
-                String nombreUsuario = jwtProvider.getNombreUsuarioFromToken(token);
-                UserDetails userDetails = userDetailsServiceImpl.loadUserByUsername(nombreUsuario);
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-        }catch (Exception e){
-            logger.error("fail en método doFilter " + e.getMessage());
-        }
+        getToken(req)
+                .filter(jwtProvider::validateToken)
+                .map(jwtProvider::getNombreUsuarioFromToken)
+                .map(userDetailsServiceImpl::loadUserByUsername)
+                .map(userDetails -> new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()))
+                .ifPresent(auth -> SecurityContextHolder.getContext().setAuthentication(auth));
+
         filterChain.doFilter(req, res);
     }
 
-    private String getToken(HttpServletRequest request){
+    private Optional<String> getToken(HttpServletRequest request) {
         String authReq = request.getHeader("Authorization");
-        if(authReq != null && authReq.startsWith("Bearer "))
-            return authReq.replace("Bearer ", "");
-        return null;
+        return Optional.ofNullable(authReq)
+                .filter(header -> header.startsWith("Bearer "))
+                .map(header -> header.replace("Bearer ", ""));
     }
 }
